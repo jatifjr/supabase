@@ -1,0 +1,45 @@
+networks:
+  supabase:
+    driver: bridge
+    external: true
+
+services:
+
+  dockersocket:
+    container_name: dockersocket
+    image: tecnativa/docker-socket-proxy:latest
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      CONTAINERS: 1
+      POST: 0
+    networks:
+      - supabase
+
+  traefik:
+    container_name: traefik
+    hostname: traefik
+    image: traefik:latest
+    restart: unless-stopped
+    ports:
+      - 8001:80
+      - 44301:443
+      - 8181:8080
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./traefik/:/etc/traefik/
+    # labels:   # Only for Traefik, unless you use the fileConfig.yml file.
+    #   traefik.http.routers.api.rule: Host(`traefik.domain.com`)    # Define the subdomain for the traefik dashboard.
+    #   traefik.http.routers.api.entryPoints: https    # Set the Traefik entry point.
+    #   traefik.http.routers.api.service: api@internal    # Enable Traefik API.
+    #   traefik.enable: true   # Enable Traefik reverse proxy for the Traefik dashboard.
+    environment:
+      CF_DNS_API_TOKEN: ${CF_DNS_API_TOKEN}
+      CLOUDFLARE_EMAIL: ${$CLOUDFLARE_EMAIL}
+      DOMAIN: ${DOMAIN}
+    depends_on:
+      - dockersocket
+    networks:
+      - supabase
